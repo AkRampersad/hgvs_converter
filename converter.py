@@ -1,8 +1,28 @@
 from Bio import Entrez, SeqIO
+import hgvs
 import hgvs.parser
+import hgvs.dataproviders.uta
+import hgvs.variantmapper
+import hgvs.assemblymapper
 
 
-var_example = "NM_001366781.1:c.90T>C"
+
+def variant_converter(hgvs_variant):
+
+    hp = hgvs.parser.Parser()
+    components = hgvs_variant.split(":")
+    variant_info = components[1]
+    if variant_info[0] == "c":
+        hdp = hgvs.dataproviders.uta.connect()
+        var_c = hp.parse_hgvs_variant(hgvs_variant)
+        am37 = hgvs.assemblymapper.AssemblyMapper(hdp,assembly_name='GRCh37',alt_aln_method = 'blat')
+        var_g = am37.c_to_g(var_c)
+        return var_g
+    if variant_info[0] == "g":
+        var_g = hp.parse_hgvs_variant(hgvs_variant)
+        return var_g
+
+
 def obtain_chromosome(transcript_id):
     Entrez.email = "akashjrampersad@gmail.com"
 
@@ -17,24 +37,21 @@ def obtain_chromosome(transcript_id):
     return None
 
 def hgvs_parser(hgvs_code):
-
-    hp = hgvs.parser.Parser()
     var_dict = {"transcript": None,
+                'chrom' : None,
                 "pos": None,
                 "ref" : None,
-                "alt" : None,
-                'chrom' : None
+                "alt" : None
                 }
+    variant = variant_converter(hgvs_code)
 
-    var_g = hp.parse_hgvs_variant(hgvs_code)
-    var_dict["transcript"] = var_g.ac
-    var_dict["pos"] = var_g.posedit.pos.start.base
-    var_dict["ref"] = var_g.posedit.edit.ref
-    var_dict["alt"] = var_g.posedit.edit.alt
-    var_dict["chrom"] = obtain_chromosome(var_g.ac)
+    var_dict["transcript"] = variant.ac
+    var_dict["pos"] = variant.posedit.pos.start.base
+    var_dict["ref"] = variant.posedit.edit.ref
+    var_dict["alt"] = variant.posedit.edit.alt
+    var_dict["chrom"] = obtain_chromosome(variant.ac)
     return var_dict
 
-print(hgvs_parser(var_example))
 
 
 
